@@ -9,7 +9,7 @@
     "start": "next start",
     "test": "bun test",
     "lint": "next lint",
-    "pages:build": "bun install --frozen-lockfile && bun run cf:build",
+    "pages:build": "bun install --frozen-lockfile && bun run cf:build && node scripts/prepare-pages-output.js",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare preview",
 		"cf:deploy": "opennextjs-cloudflare deploy",
