@@ -19,6 +19,14 @@ import https from 'https';
 import http from 'http';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import {
+  generateSlug,
+  getImageMarkdownPath,
+  getPostMetadata,
+  resolveAssetsDir,
+  resolveContentDir,
+  resolvePostFilePath,
+} from './sync-lib.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -51,8 +59,8 @@ if (!VALID_MODES.includes(SYNC_MODE)) {
 const CONFIG = {
   notionToken: process.env.NOTION_TOKEN,
   notionDatabaseId: process.env.NOTION_DATABASE_ID,
-  contentDir: path.join(process.cwd(), 'content/posts/zh'),
-  assetsDir: path.join(process.cwd(), 'content/assets/images'),
+  contentRoot: path.join(process.cwd(), 'content/posts'),
+  assetsDir: resolveAssetsDir(process.cwd()),
   postsStatus: 'Published', // Notion 中的状态字段值
   syncMode: SYNC_MODE, // 同步模式
 };
@@ -104,39 +112,6 @@ function getPostManagementType(filepath) {
   }
 
   return 'manual';
-}
-
-/**
- * 获取 Notion 文章基础信息
- */
-function getPostMetadata(page) {
-  const properties = page.properties;
-  const title = properties.Title?.title[0]?.plain_text || 'Untitled';
-  const slug = generateSlug(title);
-  const coverImage = properties['Featured Image']?.files[0]?.file.url;
-  const publishedDate = properties['Published Date']?.date?.start || new Date().toISOString();
-  const tags = properties.Tags?.multi_select?.map(tag => tag.name) || [];
-  const category = properties.Category?.select?.name;
-
-  return {
-    title,
-    slug,
-    coverImage,
-    publishedDate,
-    tags,
-    category,
-  };
-}
-
-/**
- * 生成文件名安全的 slug
- */
-function generateSlug(title) {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 100) || 'untitled';
 }
 
 /**
@@ -248,7 +223,7 @@ async function processImages(markdown, postSlug) {
       await downloadImage(url, filepath);
 
       // 替换为相对路径
-      const relativePath = `../assets/images/${postSlug}/${filename}`;
+      const relativePath = getImageMarkdownPath(postSlug, filename);
       const newImageTag = `![${alt}](${relativePath})`;
       updatedMarkdown = updatedMarkdown.replace(fullMatch, newImageTag);
 
@@ -293,10 +268,11 @@ async function fetchPublishedPosts() {
  * 处理单篇文章
  */
 async function processPost(page) {
-  const { title, slug, coverImage, publishedDate, tags, category } = getPostMetadata(page);
+  const { title, slug, locale, lang, translationKey, description: notionDescription, coverImage, publishedDate, tags, category } = getPostMetadata(page);
 
   console.log(`\n📝 处理文章: ${title}`);
   console.log(`   Slug: ${slug}`);
+  console.log(`   Locale: ${locale}`);
 
   // 转换为 Markdown
   const mdBlocks = await n2m.pageToMarkdown(page.id);
@@ -315,7 +291,7 @@ async function processPost(page) {
       const coverPath = path.join(postImageDir, coverFilename);
       console.log(`  🖼️  下载封面图: ${slug}/${coverFilename}`);
       await downloadImage(coverImage, coverPath);
-      localCoverImage = `../assets/images/${slug}/${coverFilename}`;
+      localCoverImage = getImageMarkdownPath(slug, coverFilename);
       console.log(`  ✅ 封面图已保存`);
     } catch (error) {
       console.warn(`  ⚠️  封面图下载失败: ${error.message}`);
@@ -327,7 +303,7 @@ async function processPost(page) {
     .split('\n')
     .filter(line => line.trim().length > 0 && !line.startsWith('#') && !line.startsWith('!'));
   const firstParagraph = paragraphs[0] || '';
-  const description = firstParagraph.slice(0, 160) + (firstParagraph.length > 160 ? '...' : '');
+  const description = notionDescription || firstParagraph.slice(0, 160) + (firstParagraph.length > 160 ? '...' : '');
 
   // 生成 frontmatter
   const categoryLine = category ? `category: '${category}'\n` : '';
@@ -338,8 +314,8 @@ description: '${description.replace(/'/g, "''")}'
 image: '${localCoverImage}'
 tags: [${tags.map(tag => `"${tag}"`).join(', ')}]
 draft: false
-lang: 'zh-CN'
-translationKey: '${slug}'
+lang: '${lang}'
+translationKey: '${translationKey}'
 notionSync: true
 notionPageId: '${page.id}'
 ${categoryLine}---
@@ -351,7 +327,8 @@ ${categoryLine}---
 
   // 保存文件
   const filename = `${slug}.md`;
-  const filepath = path.join(CONFIG.contentDir, filename);
+  const filepath = resolvePostFilePath(process.cwd(), locale, slug);
+  ensureDirectory(resolveContentDir(process.cwd(), locale));
   const managementType = getPostManagementType(filepath);
 
   // 检查文件是否已存在
@@ -390,12 +367,13 @@ ${categoryLine}---
 
   fs.writeFileSync(filepath, fullContent, 'utf-8');
 
-  console.log(`  💾 已保存: ${filename}`);
+  console.log(`  💾 已保存: ${locale}/${filename}`);
 
   return {
     title,
     slug,
     filename,
+    locale,
     tags,
   };
 }
@@ -417,11 +395,12 @@ async function main() {
 
   console.log('\n配置信息:');
   console.log(`  Notion Database ID: ${CONFIG.notionDatabaseId}`);
-  console.log(`  文章目录: ${CONFIG.contentDir}`);
+  console.log(`  文章目录: ${CONFIG.contentRoot}`);
   console.log(`  图片目录: ${CONFIG.assetsDir}\n`);
 
   // 确保目录存在
-  ensureDirectory(CONFIG.contentDir);
+  ensureDirectory(resolveContentDir(process.cwd(), 'zh'));
+  ensureDirectory(resolveContentDir(process.cwd(), 'en'));
   ensureDirectory(CONFIG.assetsDir);
 
   try {
@@ -450,22 +429,30 @@ async function main() {
       console.log('\n🗑️  清理本地多余的 Notion 管理文章...');
 
       // 获取 Notion 中所有文章的 slug 列表
-      const notionSlugs = posts.map(post => getPostMetadata(post).slug);
+      const notionKeys = posts.map(post => {
+        const metadata = getPostMetadata(post);
+        return `${metadata.locale}/${metadata.slug}`;
+      });
 
-      // 获取本地所有 .md 文件
-      const localFiles = fs.readdirSync(CONFIG.contentDir).filter(file => file.endsWith('.md'));
+      // 获取本地所有语言目录中的 .md 文件
+      const localFiles = ['zh', 'en'].flatMap(locale => {
+        const contentDir = resolveContentDir(process.cwd(), locale);
+        if (!fs.existsSync(contentDir)) return [];
+        return fs.readdirSync(contentDir)
+          .filter(file => file.endsWith('.md'))
+          .map(file => ({ locale, file, filepath: path.join(contentDir, file) }));
+      });
 
       // 找出本地存在但 Notion 中不存在的 Notion 管理文章
-      for (const file of localFiles) {
+      for (const { locale, file, filepath } of localFiles) {
         const slug = file.replace('.md', '');
-        const filepath = path.join(CONFIG.contentDir, file);
         const managementType = getPostManagementType(filepath);
 
         if (managementType !== 'notion') {
           continue;
         }
 
-        if (!notionSlugs.includes(slug)) {
+        if (!notionKeys.includes(`${locale}/${slug}`)) {
           try {
             fs.unlinkSync(filepath);
             deletedCount++;
