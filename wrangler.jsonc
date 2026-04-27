@@ -3,5 +3,5 @@
   "name": "notion-nextjs-blog",
   "compatibility_date": "2025-09-01",
   "compatibility_flags": ["nodejs_compat"],
-  "pages_build_output_dir": ".open-next/assets"
+  "pages_build_output_dir": "out"
 }

@@ -4,6 +4,8 @@ import { getAllPosts } from "@/features/posts/lib/content";
 import { getPostSitemapEntries } from "@/features/posts/lib/seo";
 import { siteConfig } from "@/shared/config/site";
 
+export const dynamic = "force-static";
+
 export default function sitemap(): MetadataRoute.Sitemap {
 	const staticEntries = locales.flatMap((locale) => [
 		{
