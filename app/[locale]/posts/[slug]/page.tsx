@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { isLocale, type Locale } from "@/features/i18n/lib/config";
-import { getPostBySlug, getPostStaticParams } from "@/features/posts/lib/content";
-import { getPostPath } from "@/features/posts/lib/routes";
+import { getAllPosts, getPostBySlug, getPostStaticParams } from "@/features/posts/lib/content";
+import { buildPostJsonLd, buildPostMetadata } from "@/features/posts/lib/seo";
 import { PostArticle } from "@/features/posts/components/PostArticle";
 import { renderMarkdownToHtml } from "@/shared/markdown/render";
-import { siteConfig } from "@/shared/config/site";
 
 export function generateStaticParams() {
 	return getPostStaticParams();
@@ -16,23 +15,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 	if (!isLocale(locale)) return {};
 	const post = getPostBySlug(locale as Locale, decodeURIComponent(slug));
 	if (!post) return {};
-	const path = getPostPath(post.locale, post.slug);
-
-	return {
-		title: post.title,
-		description: post.description,
-		alternates: {
-			canonical: path,
-		},
-		openGraph: {
-			type: "article",
-			title: post.title,
-			description: post.description,
-			url: `${siteConfig.url}${path}`,
-			publishedTime: post.published.toISOString(),
-			tags: post.tags,
-		},
-	};
+	return buildPostMetadata(post, getAllPosts());
 }
 
 export default async function PostPage({ params }: { params: Promise<{ locale: string; slug: string }> }) {
@@ -42,5 +25,10 @@ export default async function PostPage({ params }: { params: Promise<{ locale: s
 	if (!post) notFound();
 	const html = await renderMarkdownToHtml(post.markdown);
 
-	return <PostArticle post={post} html={html} />;
+	return (
+		<>
+			<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(buildPostJsonLd(post)) }} />
+			<PostArticle post={post} html={html} />
+		</>
+	);
 }
