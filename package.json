@@ -12,9 +12,9 @@
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare preview",
 		"cf:deploy": "opennextjs-cloudflare deploy",
-		"sync-notion": "bun scripts/sync-from-notion.js",
-		"sync-friends": "bun scripts/sync-friends-from-notion.js",
-		"indexnow:submit": "bun scripts/submit-indexnow.js"
+		"sync-notion": "node scripts/sync-from-notion.js",
+		"sync-friends": "node scripts/sync-friends-from-notion.js",
+		"indexnow:submit": "node scripts/submit-indexnow.js"
 	},
   "dependencies": {
     "@notionhq/client": "^3.1.3",

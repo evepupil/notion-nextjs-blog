@@ -523,16 +523,16 @@ async function main() {
     }
 
     console.log('\n💡 下一步:');
-    console.log('  1. 运行 pnpm dev 预览博客');
+    console.log('  1. 运行 bun run dev 预览博客');
     console.log('  2. 检查文章内容和图片是否正确');
-    console.log('  3. 运行 pnpm build 构建生产版本');
+    console.log('  3. 运行 bun run build 构建生产版本');
 
     console.log('\n💡 同步模式说明:');
-    console.log('  - overwrite（默认）: pnpm sync-notion');
+    console.log('  - overwrite（默认）: bun run sync-notion');
     console.log('    只覆盖带 Notion 标记的文章，并删除本地多余的 Notion 管理文章');
-    console.log('  - new-only: pnpm sync-notion -- --mode=new-only');
+    console.log('  - new-only: bun run sync-notion -- --mode=new-only');
     console.log('    仅新增，不覆盖已存在的文章，不删除旧文章');
-    console.log('  - append: pnpm sync-notion -- --mode=append');
+    console.log('  - append: bun run sync-notion -- --mode=append');
     console.log('    纯增量，添加新文章并更新带 Notion 标记的文章，不删除旧文章\n');
 
   } catch (error) {
