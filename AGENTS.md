@@ -27,6 +27,8 @@
 - Runtime / package manager：`Bun`。
 - Framework：`Next.js App Router`。
 - Language：`TypeScript`，保持 `strict` 风格。
+- UI components：`shadcn/ui`，组件源码放在 `shared/ui`，按需添加，不做全量引入。
+- Icons：`lucide-react`，图标按组件直接 import，避免字符串映射和全量图标注册。
 - Deploy：`Cloudflare Pages` + `@opennextjs/cloudflare`。
 - Edge：Next.js `app/api/**/route.ts` 优先使用 `export const runtime = "edge"`，除非明确需要 Node-only 能力。
 - Content：Markdown (`.md`)，不是 MDX。
@@ -95,7 +97,7 @@ features/<name>/
 
 ### `shared/` 规则
 
-- `shared/ui`：无业务含义的基础 UI。
+- `shared/ui`：无业务含义的基础 UI；`shadcn/ui` 组件统一生成到这里。
 - `shared/layout`：站点壳、Header、Footer、移动导航。
 - `shared/config`：站点配置、导航配置。
 - `shared/markdown`：Markdown 解析、渲染、heading tree、reading time。
@@ -222,6 +224,9 @@ SEO 是本项目一等公民。
 - 文章页必须阅读优先：正文宽度克制、层级清楚、少特效、代码块舒适、TOC 清晰。
 - 工具、实验室、AI 页面可以更有科技感，但不要牺牲性能和可访问性。
 - 避免廉价霓虹、过度毛玻璃、卡片堆满屏、模板博客感。
+- 基础交互组件优先复用 `shadcn/ui`，例如 `Button`、`Badge`、`Card`、`Separator`、`Dialog`、`Command`。
+- 图标优先使用 `lucide-react`，保持线性、轻量、低装饰感；按钮内图标遵循 shadcn 的 `data-icon` 约定。
+- 不为了使用组件库而破坏现有“日系轻博客 + 轻赛博实验室”视觉 token；必要时用 `app/globals.css` 中的语义变量适配。
 
 ## 禁止事项
 

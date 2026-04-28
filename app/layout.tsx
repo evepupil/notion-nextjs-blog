@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   description: "技术探索、AI 应用、Serverless 与个人知识平台。",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return children;
 }
